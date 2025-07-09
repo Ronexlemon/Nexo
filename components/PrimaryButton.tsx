@@ -1,5 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 
 interface CustomButtonProps {
   title: string;
@@ -8,6 +14,7 @@ interface CustomButtonProps {
   textColor?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  disabled?: boolean;
 }
 
 const PrimaryButton: React.FC<CustomButtonProps> = ({
@@ -17,14 +24,28 @@ const PrimaryButton: React.FC<CustomButtonProps> = ({
   textColor = '#fff',
   style,
   textStyle,
+  disabled = false,
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.button, { backgroundColor }, style]}
-      onPress={onPress}
-      activeOpacity={0.8}
+      style={[
+        styles.button,
+        { backgroundColor: disabled ? '#ccc' : backgroundColor },
+        style,
+      ]}
+      onPress={!disabled ? onPress : undefined}
+      activeOpacity={disabled ? 1 : 0.8}
+      disabled={disabled}
     >
-      <Text style={[styles.text, { color: textColor }, textStyle]}>{title}</Text>
+      <Text
+        style={[
+          styles.text,
+          { color: disabled ? '#888' : textColor },
+          textStyle,
+        ]}
+      >
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 };

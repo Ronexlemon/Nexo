@@ -1,13 +1,31 @@
+// store/persistedStore.ts
 import { configureStore } from '@reduxjs/toolkit';
-import accountReducer from "./accountSlice"; // example slice
+import accountReducer from './accountSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { persistReducer, persistStore } from 'redux-persist';
+import { combineReducers } from 'redux';
 
-const store = configureStore({
-  reducer: {
-    account: accountReducer,
-    // Add more slices here
-  },
+const persistConfig = {
+  key: 'root',
+  storage: AsyncStorage,
+  whitelist: ['account'], // which slice(s) to persist
+};
+
+const rootReducer = combineReducers({
+  account: accountReducer,
 });
 
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+const store = configureStore({
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false, // needed for redux-persist
+    }),
+});
+
+export const persistor = persistStore(store);
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 

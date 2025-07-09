@@ -1,25 +1,25 @@
 import { defineChain } from 'viem'
  
 export const crossfi = defineChain({
-  id: 7777777,
-  name: 'Zora',
+  id: 4157,
+  name: 'crossfi',
   nativeCurrency: {
     decimals: 18,
-    name: 'Ether',
-    symbol: 'ETH',
+    name: 'XFI',
+    symbol: 'XFI',
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.zora.energy'],
-      webSocket: ['wss://rpc.zora.energy'],
+      http: ['https://rpc.testnet.ms'],
+      // webSocket: ['wss://rpc.zora.energy'],
     },
   },
   blockExplorers: {
-    default: { name: 'Explorer', url: 'https://explorer.zora.energy' },
+    default: { name: 'Explorer', url: 'https://test.xfiscan.com' },
   },
   contracts: {
     multicall3: {
-      address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+      address: '0xdb5c548684221ce2f55f16456ec5cf43a028d8e9',
       blockCreated: 5882,
     },
   },

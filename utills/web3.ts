@@ -1,5 +1,5 @@
 
-import { Account, createWalletClient, http, WalletClient } from 'viem';
+import { Account, createPublicClient, createWalletClient, http, PublicClient, WalletClient } from 'viem';
 import { mnemonicToAccount, generateMnemonic, english, french, japanese, czech, simplifiedChinese, portuguese } from 'viem/accounts';
 import { erc20Abi } from 'viem';
 import { parseUnits } from 'viem/utils';
@@ -26,8 +26,14 @@ export const wallet_Client = (account: Account): WalletClient => {
     return createWalletClient({
       account,
       chain: crossfi, 
-      transport: http(), 
+      transport: http("https://rpc.testnet.ms"), 
     });
+};
+export const wallet_Client_Provider = (): PublicClient => {
+  return createPublicClient({
+    chain: crossfi,
+    transport: http('https://rpc.testnet.ms'),
+  });
 };
 export const accountfromMnemonic = (mnemonic: string) => {
       return mnemonicToAccount(mnemonic)

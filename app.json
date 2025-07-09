@@ -1,4 +1,13 @@
 {
-  "name": "nexo",
-  "displayName": "nexo"
+  "expo": {
+    "name": "Nexo",
+    "slug": "nexo",
+    "owner": "lemonr",
+    "extra": {
+      "eas": {
+        "projectId": "4bfa121e-b9a6-4976-9277-a5728abc96a5"
+      }
+    }
+  },
+  "name": "nexo"
 }

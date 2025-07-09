@@ -1,9 +1,17 @@
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import PrimaryButton from '../../components/PrimaryButton';
+import { useAccount } from '../../hook/useAccount';
 
 
 const HomeScreen = ({ navigation }: any) => {
+    const { account } = useAccount();
+
+  React.useEffect(() => {
+    if (account?.publicAddress) {
+      navigation.replace('Details'); 
+    }
+  }, [account]);
   return (
       <View style={styles.container}>
           {/* icon */}
@@ -21,9 +29,7 @@ const HomeScreen = ({ navigation }: any) => {
           </View>
           <View style={styles.account}>
               <View style={styles.button_card}>
-                  <PrimaryButton style={styles.button_accent} title='Create Account' onPress={function (): void {
-                      throw new Error('Function not implemented.');
-                  }} />
+                  <PrimaryButton style={styles.button_accent} title='Create Account' onPress={() => navigation.navigate('pin')} />
                   <PrimaryButton style={styles.button_primary} title='Import account' onPress={function (): void {
                       throw new Error('Function not implemented.');
                   } } />
