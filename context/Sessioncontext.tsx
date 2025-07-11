@@ -17,7 +17,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigation = useNavigation<any>();
   const timer = useRef<NodeJS.Timeout | null>(null);
-  const timeout = 1 * 60 * 1000; // 10 minutes
+  const timeout = 10 * 60 * 1000; // 10 minutes
 
   const resetInactivityTimer = () => {
     if (timer.current) clearTimeout(timer.current);

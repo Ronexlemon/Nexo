@@ -8,23 +8,28 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { Provider } from 'react-redux';
 import store, { persistor } from './store/redux';
 import { SessionProvider } from './context/Sessioncontext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
-    <NavigationContainer>
-    <SessionProvider>
-       <Provider store={store}>
-      <PersistGate loading={<ActivityIndicator />} persistor={persistor}>
- 
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <StackNavigator />
-       
-        </PersistGate>
-    </Provider>
-    </SessionProvider>
-     </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <BottomSheetModalProvider>
+      <NavigationContainer>
+        <SessionProvider>
+          <Provider store={store}>
+            <PersistGate loading={<ActivityIndicator />} persistor={persistor}>
+              <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+              <StackNavigator />
+            </PersistGate>
+          </Provider>
+        </SessionProvider>
+      </NavigationContainer>
+    </BottomSheetModalProvider>
+  </GestureHandlerRootView>
    
     
    

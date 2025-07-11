@@ -21,6 +21,9 @@ const DetailsScreen = ({ navigation }: any) => {
   const handleSetting = () => {
     navigation.replace('setting'); 
   }
+  const handleSend = () => {
+    navigation.navigate('SendAddress'); 
+  }
   React.useEffect(() => {
    
     const fetchBalance = async () => {
@@ -35,7 +38,7 @@ const DetailsScreen = ({ navigation }: any) => {
           address: account.publicAddress as `0x${string}`,
         });
         console.log("THE BALABCE",rawBalance)
-     Alert.alert(`THE BALANCE,${rawBalance}`)
+    // Alert.alert(`THE BALANCE,${rawBalance}`)
         setBalance(formatEther(rawBalance)); // convert BigInt to human-readable ETH
       } catch (error) {
         console.error('Error fetching balance:', error);
@@ -67,7 +70,7 @@ const DetailsScreen = ({ navigation }: any) => {
 
       {/* Action Buttons */}
       <View style={styles.actionsRow}>
-        <PrimaryButton title="Send" onPress={() => {}} style={styles.actionBtn} textStyle={styles.actionText} />
+        <PrimaryButton title="Send" onPress={handleSend} style={styles.actionBtn} textStyle={styles.actionText} />
         <PrimaryButton title="Receive" onPress={() => {}} style={styles.actionBtn} textStyle={styles.actionText} />
         <PrimaryButton title="Swap" onPress={() => {}} style={styles.actionBtn} textStyle={styles.actionText} />
       </View>

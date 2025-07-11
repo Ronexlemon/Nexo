@@ -4,13 +4,8 @@ import { CustomKeyboard } from '../../components/keyboard';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import PrimaryButton from '../../components/PrimaryButton';
 import { getUserPin } from '../../utills/storage';
+import { RootStackParamList } from '../../types';
 
-type RootStackParamList = {
-    UnlockScreen: { nextScreen: string };
-    Details: undefined;
-    RecoveryPhraseScreen: undefined;
-    
-  };
 
 // type UnlockRouteProp = RouteProp<{ params: { nextScreen: string } }, 'params'>;
 type UnlockRouteProp = RouteProp<RootStackParamList, 'UnlockScreen'>;

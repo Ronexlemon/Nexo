@@ -15,6 +15,9 @@ import AddressScreen from '../AddressScren';
 import RecoveryPhraseScreen from '../PhraseScreen';
 import UnlockScreen from '../UnlockScreen';
 import AuthScreen from '../AuthScreen';
+import SendAddressScreen from '../SendAddressScreen';
+import SendAmountScreen from '../SendAmountscreen';
+import SendScreen from '../SendScreen';
 
 
 
@@ -41,6 +44,12 @@ const StackNavigator = () => {
           <Stack.Screen name="pin" component={PinScreen} />
           <Stack.Screen name="setting" component={SettingsScreen} />
           <Stack.Screen name="UnlockScreen" component={UnlockScreen} />
+          <Stack.Screen name="SendAddress" component={SendAddressScreen} options={{
+              headerShown: true,
+              title: 'Send',
+            headerBackVisible: true,
+            headerTitleAlign: 'center',
+            }} />
           <Stack.Screen name="AuthScreen" component={AuthScreen} />
           <Stack.Screen
             name="AddressScreen"
@@ -49,6 +58,7 @@ const StackNavigator = () => {
               headerShown: true,
               title: 'Wallet Address',
               headerBackVisible: true,
+              headerTitleAlign: 'center',
             }}
           />
           <Stack.Screen
@@ -58,6 +68,27 @@ const StackNavigator = () => {
               title: 'Recovery Phrase',
               headerShown: true,
               headerBackVisible: true,
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen
+            name="AmountScreen"
+            component={SendAmountScreen}
+            options={{             
+              headerShown: true,           
+              headerTitle: '', 
+              headerBackVisible: true,
+              headerTitleAlign: 'center',
+            }}
+          />
+           <Stack.Screen
+            name="SendScreen"
+            component={SendScreen}
+            options={{             
+              headerShown: true,           
+              headerTitle: '', 
+              headerBackVisible: true,
+              headerTitleAlign: 'center',
             }}
           />
         </Stack.Navigator>

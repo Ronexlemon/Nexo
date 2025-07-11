@@ -1,5 +1,5 @@
 
-import { Account, createPublicClient, createWalletClient, http, PublicClient, WalletClient } from 'viem';
+import { Account, createPublicClient, createWalletClient, http, isAddress, PublicClient, WalletClient } from 'viem';
 import { mnemonicToAccount, generateMnemonic, english, french, japanese, czech, simplifiedChinese, portuguese } from 'viem/accounts';
 import { erc20Abi } from 'viem';
 import { parseUnits } from 'viem/utils';
@@ -38,7 +38,10 @@ export const wallet_Client_Provider = (): PublicClient => {
 export const accountfromMnemonic = (mnemonic: string) => {
       return mnemonicToAccount(mnemonic)
   }
-
+export const checkIfAddress = (address: `0x${string}`): boolean => {
+  return isAddress(address)
+  
+}
 
 
 export const sendNativeTransaction = async(client: WalletClient, to_: `0x${string}`, amount:bigint):Promise<`0x${string}`> => {
