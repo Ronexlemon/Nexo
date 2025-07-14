@@ -12,10 +12,17 @@ export type RootStackParamList = {
   RecoveryPhraseScreen: undefined;
   SendAddressScreen: undefined,
   AmountScreen: { address: string };
-  SendScreen:{sendDetails:sendNativeTransaction}
+  SendScreen: { sendDetails: sendNativeTransaction },
+  DiscoverScreen: { dappUrl?: string },
+  setting: undefined,
+  SendAddress: undefined,
+  MoveScreen: {dappUrl?:string}
+  
     
   };
 
 export const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 export type AmountScreenRouteProp = RouteProp<RootStackParamList, 'AmountScreen'>;
 export type SendScreenRouteProp = RouteProp<RootStackParamList, 'SendScreen'>;
+export type DiscoverRouteProp = RouteProp<RootStackParamList, 'DiscoverScreen'>;
+export type MoveRouteProp = RouteProp<RootStackParamList, 'MoveScreen'>;

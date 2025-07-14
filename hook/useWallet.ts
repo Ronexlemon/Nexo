@@ -7,6 +7,7 @@ import {
 } from '../utills/web3';
 import { Account } from 'viem/accounts';
 import { PublicClient, WalletClient } from 'viem';
+import React from 'react';
 
 type CreateWalletOptions = {
   language?: string;
@@ -67,7 +68,7 @@ export const useWallet = () => {
      
     };
   }, []);
-
+ 
   return {
     mnemonic,
     account,

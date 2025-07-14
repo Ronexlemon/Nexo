@@ -5,6 +5,9 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import PrimaryButton from '../../components/PrimaryButton';
 import { useWallet } from '../../hook/useWallet';
 import { formatEther } from 'viem';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types';
 
 const tokens = Array(10).fill({
   icon: 'data:image/png;base64,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',
@@ -14,16 +17,28 @@ const tokens = Array(10).fill({
   dollar_amount: 10000,
 });
 
-const DetailsScreen = ({ navigation }: any) => {
+const DetailsScreen = () => {
   const { account } = useAccount();
   const { publicClient } = useWallet()
   const [balance, setBalance] = React.useState<string>('0');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const handleSetting = () => {
     navigation.replace('setting'); 
   }
   const handleSend = () => {
     navigation.navigate('SendAddress'); 
   }
+  const handleDiscover = () => {
+    try {
+      Alert.alert("Navigation Starting");
+      navigation.navigate('MoveScreen', { dappUrl: 'https://supply-sphere.vercel.app' });
+      
+      Alert.alert("Navigation done");
+    } catch (e:any) {
+      Alert.alert("Navigation failed", e?.message || "Unknown error");
+      console.error(e);
+    }
+  };
   React.useEffect(() => {
    
     const fetchBalance = async () => {
@@ -71,7 +86,7 @@ const DetailsScreen = ({ navigation }: any) => {
       {/* Action Buttons */}
       <View style={styles.actionsRow}>
         <PrimaryButton title="Send" onPress={handleSend} style={styles.actionBtn} textStyle={styles.actionText} />
-        <PrimaryButton title="Receive" onPress={() => {}} style={styles.actionBtn} textStyle={styles.actionText} />
+        <PrimaryButton title="Receive" onPress={handleDiscover} style={styles.actionBtn} textStyle={styles.actionText} />
         <PrimaryButton title="Swap" onPress={() => {}} style={styles.actionBtn} textStyle={styles.actionText} />
       </View>
 
