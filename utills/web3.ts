@@ -43,17 +43,30 @@ export const checkIfAddress = (address: `0x${string}`): boolean => {
   
 }
 
-
-export const sendNativeTransaction = async(client: WalletClient, to_: `0x${string}`, amount:bigint):Promise<`0x${string}`> => {
-    const hash = await client.sendTransaction({
-        to: to_,
-        value: amount,
-        account: null,
-        chain: undefined
-    })
-    return hash
+export const amount_to_bigint = (amount: string, Decimal: number = 18) => {
+  return parseUnits(amount,Decimal)
+  
 }
 
+export const sendNativeTransaction = async (
+  client: WalletClient,
+  to_: `0x${string}`,
+  amount: bigint,
+  mnemonic:string,
+): Promise<`0x${string}`> => {
+  const [accoun] = await client.getAddresses()
+  const account_user = accountfromMnemonic(mnemonic as string)
+  if (!account_user) throw new Error("Wallet client must have an account")
+
+  const hash = await client.sendTransaction({
+    to: to_,
+    value: amount,
+    account: account_user,
+    chain: undefined
+  })
+
+  return hash
+}
 
 
 export const sendERC20 = async (

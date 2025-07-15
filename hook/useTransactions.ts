@@ -9,11 +9,11 @@ export const useTransactions = () => {
 
   // Send native token (e.g., ETH, XFI)
   const sendNative = useCallback(
-    async (client: WalletClient, to: `0x${string}`, amount: bigint) => {
+    async (client: WalletClient, to: `0x${string}`, amount: bigint,mnemonic:string) => {
       try {
         setIsLoading(true);
         setError(null);
-        const hash = await sendNativeTransaction(client, to, amount);
+        const hash = await sendNativeTransaction(client, to, amount,mnemonic);
         setTxHash(hash);
         return hash;
       } catch (err: any) {
