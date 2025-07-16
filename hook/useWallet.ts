@@ -27,6 +27,10 @@ export const useWallet = () => {
   const [publicClient] = useState<PublicClient>(() => wallet_Client_Provider());
 
 
+
+
+
+
   // Create a new wallet and return the result
   const createWallet = useCallback((options?: CreateWalletOptions): WalletData => {
     const generatedMnemonic = createMnemonic(options?.language);

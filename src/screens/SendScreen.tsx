@@ -15,6 +15,8 @@ import { useWallet } from "../../hook/useWallet";
 import { amount_to_bigint } from "../../utills/web3";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/redux";
+import { useWalletClient } from "../../hook/useWalletClient";
+import { mnemonicToAccount } from "viem/accounts";
 
 
 const SendScreen = () => {
@@ -22,27 +24,30 @@ const SendScreen = () => {
   const { sendDetails } = route.params;
   const { sendNative, sendToken } = useTransactions();
   const { createWallet } = useWallet();
-  
-  
   const account = useSelector((state: RootState) => state.account);
 
   const [isSending, setIsSending] = useState(false);
+  const mnemonic = account.mnemonic as string
+  const acc = mnemonicToAccount(mnemonic)
+  const walletClient = useWalletClient(acc);
+  
+  
 
   const handleSendNative = async () => {
     const amount = amount_to_bigint(sendDetails.amount as string);
-    const mnemonic = account.mnemonic as string
+   
     if (!mnemonic) {
       Alert.alert("No Mnemonic");
       
     }
     try {
       setIsSending(true);
-      const { client } = createWallet();
-      if (!client) {
+      // const { client } = createWallet();
+      if (!walletClient) {
         Alert.alert("No client");
         return;
       }
-      const tx = await sendNative(client, sendDetails.to as `0x${string}`, amount,mnemonic);
+      const tx = await sendNative(walletClient, sendDetails.to as `0x${string}`, amount,mnemonic);
       console.log("THE TX IS",tx)
       Alert.alert(`The hash is ${tx}`);
     } catch (error: any) {
@@ -61,24 +66,53 @@ const SendScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.card_container}>
-        <Text style={styles.label}>Send Summary</Text>
+       
 
         <View style={styles.card}>
           <View style={styles.card_row}>
-            <Text style={styles.card_label}>Token:</Text>
-            <Text style={styles.card_value}>{sendDetails?.token}</Text>
+            <Text style={styles.card_label}>Sending</Text>
+            
+          </View>
+          <View style={styles.card_token}>
+            <View style={styles.token_symbol}>
+               <Text>image</Text>
+            </View>
+            <View style={styles.token}>
+              <Text style={styles.text_amount} >{sendDetails?.amount}  {sendDetails?.token}</Text>
+              <Text style={styles.text_amount}>$ {200}  </Text>
+
+            </View>
+
           </View>
 
-          <View style={styles.card_row}>
+
+          <View style={styles.token_to}>
             <Text style={styles.card_label}>To:</Text>
+            <View style={styles.to_address}>
+              
             <Text style={styles.card_value}>{sendDetails?.to}</Text>
+            </View>
+           
           </View>
-
-          <View style={styles.card_row}>
-            <Text style={styles.card_label}>Amount:</Text>
-            <Text style={styles.card_value}>{sendDetails?.amount}</Text>
-          </View>
+          
         </View>
+      </View>
+
+      {/* network and fees */}
+      <View style={styles.network}>
+        <View style={styles.network_name}>
+          <Text style={styles.general_test}>Network</Text>
+          <Text  style={styles.general_test}>Crossfi</Text>
+        </View>
+        <View style={styles.network_name}>
+          <Text style={styles.general_test}>Network Fee</Text>
+          <Text style={styles.text_amount}>{0.011}{ sendDetails?.token}</Text>
+        </View>
+        <View style={styles.network_name}>
+          <Text style={styles.general_test}>Total plus Fees</Text>
+          <Text style={styles.text_amount}>${100 }</Text>
+        </View>
+
       </View>
 
       <View style={styles.review}>
@@ -107,7 +141,7 @@ const styles = StyleSheet.create({
       fontWeight: "600",
     },
     card_container: {
-      flex: 4,
+      flex: 2,
     },
     card: {
       backgroundColor: "#fff",
@@ -116,6 +150,8 @@ const styles = StyleSheet.create({
       borderColor: "#ccc",
       padding: 15,
       gap: 12,
+      height: 250,
+      flexWrap: 'wrap'
     },
     card_row: {
       flexDirection: "row",
@@ -125,6 +161,11 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontWeight: "500",
       color: "#444",
+  },
+  card_token: {
+    flexDirection: "row",
+    gap:8
+      
     },
     card_value: {
       fontSize: 16,
@@ -134,6 +175,47 @@ const styles = StyleSheet.create({
       flex: 1,
       marginBottom: 10,
       justifyContent: "flex-end",
-    },
+  },
+  token_symbol: {
+    width: 46,
+    height:46,
+    borderRadius: 23,
+    backgroundColor: "blue",
+    justifyContent: "center",
+    alignItems:"center"
+  },
+  token: {
+    flexDirection: "column",
+    gap: 4,
+    
+  },
+  token_to: {
+    flexDirection: "column",
+    gap:2
+  },
+  to_address: {
+    flexDirection: "row",
+    gap: 4,
+    flexWrap:"wrap"
+  },
+
+  network: {
+    flex: 2,
+    flexDirection: "column",
+    gap:16
+    
+  },
+  network_name: {
+    flexDirection: "row",
+    justifyContent:"space-between"
+  },
+  general_test: {
+    fontSize:16
+    
+  },
+  text_amount: {
+    fontSize:16
+    
+  }
   });
   

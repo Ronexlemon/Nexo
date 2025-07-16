@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   TouchableOpacity,
   Text,
   StyleSheet,
   ViewStyle,
   TextStyle,
+  View,
 } from 'react-native';
 
 interface CustomButtonProps {
-  title: string;
+  title: ReactNode; // ✅ allow text or JSX
   onPress: () => void;
   backgroundColor?: string;
   textColor?: string;
@@ -37,15 +38,21 @@ const PrimaryButton: React.FC<CustomButtonProps> = ({
       activeOpacity={disabled ? 1 : 0.8}
       disabled={disabled}
     >
-      <Text
-        style={[
-          styles.text,
-          { color: disabled ? '#888' : textColor },
-          textStyle,
-        ]}
-      >
-        {title}
-      </Text>
+      <View style={styles.titleWrapper}>
+        {typeof title === 'string' ? (
+          <Text
+            style={[
+              styles.text,
+              { color: disabled ? '#888' : textColor },
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        ) : (
+          title
+        )}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -58,10 +65,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 8,
+    flexDirection: 'row',
   },
   text: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  titleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

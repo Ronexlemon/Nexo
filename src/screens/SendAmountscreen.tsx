@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { InteractionManager } from "react-native";
 
 import { CustomBottomSheet } from "../../components/BottomSheet"; // Corrected name
 import { AmountScreenRouteProp, RootStackParamList } from "../../types";
@@ -47,8 +49,21 @@ const SendAmountScreen = () => {
     bottomSheetRef.current?.dismiss();
   };
   const handleReview = () => {
-    navigation.navigate("SendScreen", { sendDetails:{amount:amount.toString(),to:address as `0x${string}`,token:selectedToken} });
-  }
+    if (!amount) {
+      Alert.alert("Missing input", "Please enter amount and select token.");
+      return;
+    }
+  
+    
+      navigation.navigate("SendScreen", {
+        sendDetails: {
+          amount: amount.toString(),
+          to: address as `0x${string}`,
+          token: selectedToken,
+        },
+      });
+  
+  };
 
   return (
     <View style={styles.container}>
@@ -78,13 +93,11 @@ const SendAmountScreen = () => {
         <View style={styles.card_amount}>
           <View>
           <TextInput
-        style={styles.input}
-        placeholder="0.00"
-        placeholderTextColor="#999"
-        keyboardType="decimal-pad"
-        value={amount}
-        onChangeText={setAmount}
-          />
+  value={amount}
+  onChangeText={(val) => setAmount(val)}
+  placeholder="0.00"
+  keyboardType="decimal-pad"
+/>
           </View>
        
           <View>

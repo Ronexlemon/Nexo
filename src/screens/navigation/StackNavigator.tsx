@@ -20,6 +20,7 @@ import SendAmountScreen from '../SendAmountscreen';
 import SendScreen from '../SendScreen';
 import DiscoverScreen from '../DiscoverScreen';
 import MoveScreen from '../discover/MoveScreen';
+import MainTabs from '../../tabs/bottomtabs';
 
 
 
@@ -42,10 +43,10 @@ const StackNavigator = () => {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Details" component={DetailsScreen} />
+          <Stack.Screen name="Details" component={MainTabs} />
           <Stack.Screen name="pin" component={PinScreen} />
-          <Stack.Screen name="setting" component={SettingsScreen} />
-          <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} />
+          {/* <Stack.Screen name="setting" component={SettingsScreen} /> */}
+          {/* <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} /> */}
           <Stack.Screen name="MoveScreen" component={MoveScreen} />
           <Stack.Screen name="UnlockScreen" component={UnlockScreen} />
           <Stack.Screen name="SendAddress" component={SendAddressScreen} options={{
@@ -90,7 +91,7 @@ const StackNavigator = () => {
             component={SendScreen}
             options={{             
               headerShown: true,           
-              headerTitle: '', 
+              headerTitle: 'Review Send', 
               headerBackVisible: true,
               headerTitleAlign: 'center',
             }}
