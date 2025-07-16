@@ -1,6 +1,7 @@
 // store/persistedStore.ts
 import { configureStore } from '@reduxjs/toolkit';
 import accountReducer from './accountSlice';
+import tokenReducer from "./tokenSlice"
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persistReducer, persistStore } from 'redux-persist';
 import { combineReducers } from 'redux';
@@ -8,11 +9,12 @@ import { combineReducers } from 'redux';
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['account'], // which slice(s) to persist
+  whitelist: ['account','tokens'], // which slice(s) to persist
 };
 
 const rootReducer = combineReducers({
   account: accountReducer,
+  tokens : tokenReducer
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

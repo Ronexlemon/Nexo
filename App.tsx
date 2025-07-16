@@ -1,4 +1,6 @@
 import 'react-native-get-random-values';
+import 'text-encoding'; 
+
 
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
