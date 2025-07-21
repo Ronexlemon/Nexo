@@ -8,6 +8,8 @@ import LottieView from "lottie-react-native";
 // This import will now load the new animation data from your local file
 import animation from "../../../assets/animation.json"
 
+import connectIcon from "../../../assets/connect.json"
+
 const MoveScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<MoveRouteProp>();
@@ -15,7 +17,7 @@ const MoveScreen = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-       navigation.navigate("DiscoverScreen", { dappUrl: dappUrl as string });
+       navigation.replace("DiscoverScreen", { dappUrl: dappUrl as string });
     }, 5000);
 
     return () => clearTimeout(timer);
@@ -24,10 +26,10 @@ const MoveScreen = () => {
   return (
     <View style={styles.container}>
       {/* LottieView will render the animation from the updated animation.json */}
-      {/* <LottieView source={animation} autoPlay loop style={styles.lottie} /> */}
+      <LottieView source={connectIcon} autoPlay loop style={styles.lottie} />
 
       {/* Basic Spinner Fallback */}
-      <ActivityIndicator size="large" color="#4c9" />
+      {/* <ActivityIndicator size="large" color="#4c9" /> */}
     </View>
   );
 };

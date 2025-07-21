@@ -11,6 +11,7 @@ import { Provider } from 'react-redux';
 import store, { persistor } from './store/redux';
 import { SessionProvider } from './context/Sessioncontext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Toast from 'react-native-toast-message'
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
@@ -30,7 +31,8 @@ function App() {
           </Provider>
         </SessionProvider>
       </NavigationContainer>
-    </BottomSheetModalProvider>
+      </BottomSheetModalProvider>
+      <Toast />
   </GestureHandlerRootView>
    
     

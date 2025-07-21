@@ -22,6 +22,11 @@ export const createMnemonic = (language?: string) => {
   return mnemonic;
 };
 
+// export const rawBalance = async() => { 
+//  const balance= await publicClient.getBalance({
+//     address: account.publicAddress as `0x${string}`,
+//   });
+// }
 
 
 export const wallet_Client = (account: Account): WalletClient => {

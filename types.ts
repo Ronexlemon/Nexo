@@ -5,6 +5,13 @@ type sendNativeTransaction = {
   token: string,
   to:`0x${string}`
 }
+export type Transaction = {
+  tokenName: string;
+  amount: number;
+  amountInUSD: number;
+  hash: string;
+};
+
 
 export type RootStackParamList = {
     UnlockScreen: { nextScreen: string };
@@ -15,8 +22,10 @@ export type RootStackParamList = {
   SendScreen: { sendDetails: sendNativeTransaction },
   DiscoverScreen: { dappUrl?: string },
   setting: undefined,
+  Settings: undefined,
   SendAddress: undefined,
-  MoveScreen: {dappUrl?:string}
+  MoveScreen: { dappUrl?: string },
+  Wallet : undefined,
   
     
   };

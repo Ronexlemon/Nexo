@@ -8,22 +8,25 @@ import { WebViewMessageEvent } from 'react-native-webview';
 import { useWallet } from '../../hook/useWallet'; // Assuming this hook provides viem client and account
 import { DiscoverRouteProp } from '../../types'; // Assuming your navigation types
 import { Account, Chain, Client, Transport, PublicClient } from 'viem';
+import { useAccount } from '../../hook/useAccount';
+import { accountfromMnemonic } from '../../utills/web3';
 
 const DiscoverScreen = () => {
   const webviewRef = useRef<WebViewType>(null);
   const route = useRoute<DiscoverRouteProp>();
-  const { account, client, createWallet } = useWallet(); // Assuming switchChain might be available
+  const {account} = useAccount()
+  const { account:accountt, client, createWallet } = useWallet(); // Assuming switchChain might be available
 
   // Auto-connect wallet on mount if not already connected
   useEffect(() => {
     if (!account || !client) {
-      const { account: newAccount } = createWallet();
-      console.log("Auto-connected wallet:", newAccount.address);
-      Alert.alert("Wallet connected", newAccount.address);
+      // const { account: newAccount } = createWallet();
+      console.log("Auto-connected wallet:", account.publicAddress);
+      Alert.alert("Wallet connected", account?.publicAddress as string);
     }
   }, [account, client, createWallet]);
 
-  const currentAddress = account?.address;
+  const currentAddress = account?.publicAddress as string;
   const currentChainId = client?.chain?.id;
   const dappUrl = route.params?.dappUrl ?? 'https://supply-sphere.vercel.app';
 
@@ -163,7 +166,7 @@ const DiscoverScreen = () => {
         switch (method) {
           case 'eth_requestAccounts':
           case 'eth_accounts':
-            result = [account.address];
+            result = [account.publicAddress];
             break;
 
           case 'eth_chainId':
@@ -181,7 +184,7 @@ const DiscoverScreen = () => {
             // For simplicity, we assume `message` is the first parameter.
             try {
               result = await client.signMessage({
-                account: account as Account,
+                account: accountfromMnemonic(account.mnemonic  as string) as Account,
                 message: { raw: message }, // `viem` expects {raw: string | Uint8Array} or {text: string}
               });
             } catch (e: any) {
@@ -196,7 +199,7 @@ const DiscoverScreen = () => {
             try {
               // Ensure BigInt conversion for value and gas
               const hash = await client.sendTransaction({
-                account: account as Account,
+                account: accountfromMnemonic(account.mnemonic as string) as Account,
                 to: tx.to,
                 value: tx.value ? BigInt(tx.value) : undefined,
                 gas: tx.gas ? BigInt(tx.gas) : undefined,

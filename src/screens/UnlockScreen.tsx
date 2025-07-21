@@ -17,7 +17,7 @@ const UnlockScreen = () => {
 
   const navigation = useNavigation<any>();
   const route = useRoute<UnlockRouteProp>();
-  const nextScreen = route.params?.nextScreen || 'Details'; 
+  const nextScreen = route.params?.nextScreen || 'Wallet'; 
 
   const handleKeyPress = (key: string) => {
     if (key === 'X') {

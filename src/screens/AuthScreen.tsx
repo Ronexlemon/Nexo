@@ -17,7 +17,7 @@ const AuthScreen = () => {
       if (account?.publicAddress && pin) {
         // Redirect to UnlockScreen for verification
         navigation.replace('UnlockScreen', {
-          nextScreen: 'Details',
+          nextScreen: 'Wallet',
         });
       } else {
         // If no wallet is set, redirect to create pin/setup screen

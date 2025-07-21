@@ -43,10 +43,11 @@ const StackNavigator = () => {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Details" component={MainTabs} />
+          <Stack.Screen name="Wallet" component={MainTabs} />
           <Stack.Screen name="pin" component={PinScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
           {/* <Stack.Screen name="setting" component={SettingsScreen} /> */}
-          {/* <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} /> */}
+          <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} />
           <Stack.Screen name="MoveScreen" component={MoveScreen} />
           <Stack.Screen name="UnlockScreen" component={UnlockScreen} />
           <Stack.Screen name="SendAddress" component={SendAddressScreen} options={{

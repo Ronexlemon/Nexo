@@ -1,4 +1,4 @@
-import React, { useCallback, forwardRef, Ref } from 'react';
+import React, { useCallback, forwardRef } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -12,11 +12,12 @@ interface Props {
   children?: React.ReactNode;
   snapPoints?: (string | number)[];
   onClose?: () => void;
+  Component?: React.ComponentType<any>;
+  componentProps?: Record<string, any>;
 }
 
-// Wrap with forwardRef to allow the `ref` prop
 export const CustomBottomSheet = forwardRef<BottomSheetModal, Props>(
-  ({ title, description, children, snapPoints = ['80%'], onClose }, ref) => {
+  ({ title, description, children, snapPoints = ['80%'], onClose, Component, componentProps }, ref) => {
     const renderBackdrop = useCallback(
       (props: any) => (
         <BottomSheetBackdrop
@@ -40,19 +41,17 @@ export const CustomBottomSheet = forwardRef<BottomSheetModal, Props>(
         <BottomSheetView style={styles.contentContainer}>
           {title && <Text style={styles.title}>{title}</Text>}
           {description && <Text style={styles.description}>{description}</Text>}
-          {children}
+          {Component ? <Component {...componentProps} /> : children}
         </BottomSheetView>
       </BottomSheetModal>
     );
   }
 );
 
-
-
 const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
-    flex: 1, 
+    flex: 1,
   },
   title: {
     fontSize: 18,
@@ -62,6 +61,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
     color: 'gray',
-    marginBottom: 10, 
+    marginBottom: 10,
   },
 });

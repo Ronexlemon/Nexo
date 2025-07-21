@@ -93,7 +93,7 @@ const TokenAddModal: React.FC<TokenAddModalProps> = ({ visible, onClose }) => {
   );
 };
 
-export default TokenAddModal;
+export { TokenAddModal };
 
 const styles = StyleSheet.create({
   overlay: {

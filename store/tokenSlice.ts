@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface TokenBalance {
+export interface TokenBalance {
   symbol: string;
   name: string;
   address: string;
