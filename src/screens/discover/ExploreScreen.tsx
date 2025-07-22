@@ -41,6 +41,13 @@ const dapps = [
     icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968393.png',
     description: 'Discover, collect, and sell NFTs.'
   },
+  {
+    id: '6',
+    name: 'Nexo Template',
+    url: 'https://nexo-next-template.vercel.app/',
+    icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968705.png',
+    description: 'A starter template for building modern Web3 dApps.'
+  }
 ];
 
 const ExploreScreen = () => {
