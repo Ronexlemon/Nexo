@@ -10,6 +10,8 @@ import { DiscoverRouteProp } from '../../types'; // Assuming your navigation typ
 import { Account, Chain, Client, Transport, PublicClient } from 'viem';
 import { useAccount } from '../../hook/useAccount';
 import { accountfromMnemonic } from '../../utills/web3';
+//import walletInjector from '../injector/walletInjector';
+import injectedJavaScriptProvider from '../injector/walletInjector';
 
 const DiscoverScreen = () => {
   const webviewRef = useRef<WebViewType>(null);
@@ -33,125 +35,125 @@ const DiscoverScreen = () => {
   // --- Injected JavaScript Provider ---
   // We use useCallback to memoize this and only re-create if dependencies change.
   // This is crucial if you want to re-inject on address/chain changes.
-  const injectedJavaScriptProvider = useCallback((address: string | undefined, chainId: number | undefined) => {
-    // Only inject if address and chainId are available
-    if (!address || !chainId) {
-      return `
-        (function() {
-          console.warn("Wallet not ready, not injecting ethereum provider.");
-        })();
-        true;
-      `;
-    }
+  // const injectedJavaScriptProvider = useCallback((address: string | undefined, chainId: number | undefined) => {
+  //   // Only inject if address and chainId are available
+  //   if (!address || !chainId) {
+  //     return `
+  //       (function() {
+  //         console.warn("Wallet not ready, not injecting ethereum provider.");
+  //       })();
+  //       true;
+  //     `;
+  //   }
 
-    const hexChainId = `0x${chainId.toString(16)}`;
+  //   const hexChainId = `0x${chainId.toString(16)}`;
 
-    return `
-      (function() {
-        if (window.ethereum && window.ethereum.isMetaMask) {
-          console.log("Ethereum provider already injected or exists.");
-          return; // Avoid re-injecting if already present
-        }
+  //   return `
+  //     (function() {
+  //       if (window.ethereum && window.ethereum.isMetaMask) {
+  //         console.log("Ethereum provider already injected or exists.");
+  //         return; // Avoid re-injecting if already present
+  //       }
 
-        let _selectedAddress = "${address}";
-        let _chainId = "${hexChainId}";
-        let _isConnected = true; // Assume connected initially
+  //       let _selectedAddress = "${address}";
+  //       let _chainId = "${hexChainId}";
+  //       let _isConnected = true; // Assume connected initially
 
-        const listeners = {
-          accountsChanged: [],
-          chainChanged: [],
-          connect: [],
-          disconnect: [],
-          message: [],
-        };
+  //       const listeners = {
+  //         accountsChanged: [],
+  //         chainChanged: [],
+  //         connect: [],
+  //         disconnect: [],
+  //         message: [],
+  //       };
 
-        const emit = (eventName, data) => {
-          listeners[eventName]?.forEach(listener => listener(data));
-        };
+  //       const emit = (eventName, data) => {
+  //         listeners[eventName]?.forEach(listener => listener(data));
+  //       };
 
-        window.ethereum = {
-          isMetaMask: true,
-          _metamask: {
-            is        : true,
-            get      : () => window.ethereum,
-            set      : () => {}
-          },
-          _events: listeners, // Expose internal event listeners for debugging
-          selectedAddress: _selectedAddress,
-          chainId: _chainId,
-          isConnected: () => _isConnected,
+  //       window.ethereum = {
+  //         isMetaMask: true,
+  //         _metamask: {
+  //           is        : true,
+  //           get      : () => window.ethereum,
+  //           set      : () => {}
+  //         },
+  //         _events: listeners, // Expose internal event listeners for debugging
+  //         selectedAddress: _selectedAddress,
+  //         chainId: _chainId,
+  //         isConnected: () => _isConnected,
 
-          // Standard EIP-1193 request method
-          request: ({ method, params }) => {
-            return new Promise((resolve, reject) => {
-              const id = Math.random().toString(36).substring(7);
-              const message = { id, method, params };
-              console.log('WebView: Sending request to native:', message);
+  //         // Standard EIP-1193 request method
+  //         request: ({ method, params }) => {
+  //           return new Promise((resolve, reject) => {
+  //             const id = Math.random().toString(36).substring(7);
+  //             const message = { id, method, params };
+  //             console.log('WebView: Sending request to native:', message);
 
-              const listener = (event) => {
-                try {
-                  const nativeMessage = JSON.parse(event.data);
-                  if (nativeMessage.id === id) {
-                    window.removeEventListener("message", listener);
-                    console.log('WebView: Received response from native:', nativeMessage);
-                    if (nativeMessage.error) {
-                      reject(new Error(nativeMessage.error.message || 'Error from native'));
-                    } else {
-                      resolve(nativeMessage.result);
-                    }
-                  }
-                } catch (e) {
-                  console.error('WebView: Error parsing native message:', e);
-                }
-              };
-              window.addEventListener("message", listener);
-              window.ReactNativeWebView.postMessage(JSON.stringify(message));
-            });
-          },
+  //             const listener = (event) => {
+  //               try {
+  //                 const nativeMessage = JSON.parse(event.data);
+  //                 if (nativeMessage.id === id) {
+  //                   window.removeEventListener("message", listener);
+  //                   console.log('WebView: Received response from native:', nativeMessage);
+  //                   if (nativeMessage.error) {
+  //                     reject(new Error(nativeMessage.error.message || 'Error from native'));
+  //                   } else {
+  //                     resolve(nativeMessage.result);
+  //                   }
+  //                 }
+  //               } catch (e) {
+  //                 console.error('WebView: Error parsing native message:', e);
+  //               }
+  //             };
+  //             window.addEventListener("message", listener);
+  //             window.ReactNativeWebView.postMessage(JSON.stringify(message));
+  //           });
+  //         },
 
-          // EIP-1193 event methods
-          on: (eventName, handler) => {
-            if (listeners[eventName]) {
-              listeners[eventName].push(handler);
-            } else {
-              console.warn(\`Ethereum provider: Unsupported event "\${eventName}"\`);
-            }
-          },
-          removeListener: (eventName, handler) => {
-            if (listeners[eventName]) {
-              listeners[eventName] = listeners[eventName].filter(l => l !== handler);
-            }
-          },
+  //         // EIP-1193 event methods
+  //         on: (eventName, handler) => {
+  //           if (listeners[eventName]) {
+  //             listeners[eventName].push(handler);
+  //           } else {
+  //             console.warn(\`Ethereum provider: Unsupported event "\${eventName}"\`);
+  //           }
+  //         },
+  //         removeListener: (eventName, handler) => {
+  //           if (listeners[eventName]) {
+  //             listeners[eventName] = listeners[eventName].filter(l => l !== handler);
+  //           }
+  //         },
 
-          // Deprecated methods for compatibility (Uniswap might still use them)
-          send: (method, params) => {
-            if (typeof method === 'string') { // new send method (EIP-1193 style)
-              return window.ethereum.request({ method, params });
-            } else { // old send method (e.g., web3.js 0.x)
-              const payload = method;
-              return new Promise((resolve, reject) => {
-                window.ethereum.request({ method: payload.method, params: payload.params })
-                  .then(result => resolve({ jsonrpc: "2.0", id: payload.id, result }))
-                  .catch(error => reject({ jsonrpc: "2.0", id: payload.id, error }));
-              });
-            }
-          },
-          sendAsync: (payload, callback) => {
-            window.ethereum.request({ method: payload.method, params: payload.params })
-              .then(result => callback(null, { jsonrpc: "2.0", id: payload.id, result }))
-              .catch(error => callback(error, null));
-          }
-        };
+  //         // Deprecated methods for compatibility (Uniswap might still use them)
+  //         send: (method, params) => {
+  //           if (typeof method === 'string') { // new send method (EIP-1193 style)
+  //             return window.ethereum.request({ method, params });
+  //           } else { // old send method (e.g., web3.js 0.x)
+  //             const payload = method;
+  //             return new Promise((resolve, reject) => {
+  //               window.ethereum.request({ method: payload.method, params: payload.params })
+  //                 .then(result => resolve({ jsonrpc: "2.0", id: payload.id, result }))
+  //                 .catch(error => reject({ jsonrpc: "2.0", id: payload.id, error }));
+  //             });
+  //           }
+  //         },
+  //         sendAsync: (payload, callback) => {
+  //           window.ethereum.request({ method: payload.method, params: payload.params })
+  //             .then(result => callback(null, { jsonrpc: "2.0", id: payload.id, result }))
+  //             .catch(error => callback(error, null));
+  //         }
+  //       };
 
-        // Dispatch events that DApps listen for
-        // This is crucial for DApps to detect the provider and trigger connection flows
-        window.dispatchEvent(new Event('ethereum#initialized'));
-        emit('connect', { chainId: _chainId }); // Inform DApp about connection
-        console.log('WebView: injected ethereum provider with address:', _selectedAddress, 'chainId:', _chainId);
-      })();
-      true;
-    `;
-  }, []);
+  //       // Dispatch events that DApps listen for
+  //       // This is crucial for DApps to detect the provider and trigger connection flows
+  //       window.dispatchEvent(new Event('ethereum#initialized'));
+  //       emit('connect', { chainId: _chainId }); // Inform DApp about connection
+  //       console.log('WebView: injected ethereum provider with address:', _selectedAddress, 'chainId:', _chainId);
+  //     })();
+  //     true;
+  //   `;
+  // }, []);
 
   // --- Handle Messages from WebView (DApp requests) ---
   const handleMessage = async (event: WebViewMessageEvent) => {
