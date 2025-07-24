@@ -1,363 +1,580 @@
-import React, { useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+/**
+ * DiscoverScreen.tsx
+ *
+ * This React Native component serves as a DApp browser. It hosts a `WebView`
+ * and establishes a bidirectional communication bridge to enable DApps to
+ * interact with the native wallet. It uses `viem` for blockchain interactions.
+ */
+
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { View, StyleSheet, Alert, ActivityIndicator, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebView as WebViewType } from 'react-native-webview';
 import { useRoute } from '@react-navigation/native';
 import { WebViewMessageEvent } from 'react-native-webview';
 
-import { useWallet } from '../../hook/useWallet'; // Assuming this hook provides viem client and account
-import { DiscoverRouteProp } from '../../types'; // Assuming your navigation types
-import { Account, Chain, Client, Transport, PublicClient } from 'viem';
-import { useAccount } from '../../hook/useAccount';
-import { accountfromMnemonic } from '../../utills/web3';
-//import walletInjector from '../injector/walletInjector';
+// Import your custom wallet hooks and utilities.
+// Adjust these paths based on your project structure.
+import { useWallet } from '../../hook/useWallet'; // Provides viem client and account
+import { Account } from 'viem'; // viem Account type
+import { accountfromMnemonic } from '../../utills/web3'; // Utility to derive viem Account from mnemonic
+
+// Import the EIP-1193 injected JavaScript provider.
+// This is the function that returns the JavaScript string to be injected.
 import injectedJavaScriptProvider from '../injector/walletInjector';
+import { useAccount } from '../../hook/useAccount';
+import { DiscoverRouteProp } from '../../types';
+import { mnemonicToAccount } from 'viem/accounts';
+import { useWalletClient } from '../../hook/useWalletClient';
+
 
 const DiscoverScreen = () => {
-  const webviewRef = useRef<WebViewType>(null);
-  const route = useRoute<DiscoverRouteProp>();
+  const webviewRef = useRef<WebViewType>(null); // Reference to the WebView component instance
+  const route = useRoute<DiscoverRouteProp>(); // Hook to access navigation route parameters
+
+  // Access wallet state (account details and viem client) from your custom hook.
+  const { account:acct, publicClient: client } = useWallet();
   const {account} = useAccount()
-  const { account:accountt, client, createWallet } = useWallet(); // Assuming switchChain might be available
+  const [loading, setLoading] = useState(true); // State to control the loading indicator for the WebView
+  const mnemonic = account.mnemonic as string
+    const acc = mnemonicToAccount(mnemonic)
+    const walletClient = useWalletClient(acc);
 
-  // Auto-connect wallet on mount if not already connected
-  useEffect(() => {
-    if (!account || !client) {
-      // const { account: newAccount } = createWallet();
-      console.log("Auto-connected wallet:", account.publicAddress);
-      Alert.alert("Wallet connected", account?.publicAddress as string);
-    }
-  }, [account, client, createWallet]);
+  // Derive the current wallet address and chain ID.
+  // These values are dynamic and used to inject/re-inject the provider.
+  const currentAddress = account?.publicAddress;
+  const currentChainId = client?.chain?.id; // viem client's chain ID (number)
+  const dappUrl = route.params?.dappUrl ?? 'https://app.uniswap.org/#/swap'; // Default DApp URL
 
-  const currentAddress = account?.publicAddress as string;
-  const currentChainId = client?.chain?.id;
-  const dappUrl = route.params?.dappUrl ?? 'https://supply-sphere.vercel.app';
+  /**
+   * `handleMessage` is the callback function for `WebView`'s `onMessage` prop.
+   * It receives messages (EIP-1193 requests) sent from the DApp within the WebView.
+   * This function processes each request using `viem` and sends a response back to the DApp.
+   * `useCallback` is used to memoize this function for performance.
+   */
+  const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
+    let result: any = null; // Stores the successful result of the RPC call
+    let error: { code: number; message: string; data?: any } | null = null; // Stores error information if the call fails
+    let id: string | null = null; // Stores the unique request ID for matching responses
 
-  // --- Injected JavaScript Provider ---
-  // We use useCallback to memoize this and only re-create if dependencies change.
-  // This is crucial if you want to re-inject on address/chain changes.
-  // const injectedJavaScriptProvider = useCallback((address: string | undefined, chainId: number | undefined) => {
-  //   // Only inject if address and chainId are available
-  //   if (!address || !chainId) {
-  //     return `
-  //       (function() {
-  //         console.warn("Wallet not ready, not injecting ethereum provider.");
-  //       })();
-  //       true;
-  //     `;
-  //   }
-
-  //   const hexChainId = `0x${chainId.toString(16)}`;
-
-  //   return `
-  //     (function() {
-  //       if (window.ethereum && window.ethereum.isMetaMask) {
-  //         console.log("Ethereum provider already injected or exists.");
-  //         return; // Avoid re-injecting if already present
-  //       }
-
-  //       let _selectedAddress = "${address}";
-  //       let _chainId = "${hexChainId}";
-  //       let _isConnected = true; // Assume connected initially
-
-  //       const listeners = {
-  //         accountsChanged: [],
-  //         chainChanged: [],
-  //         connect: [],
-  //         disconnect: [],
-  //         message: [],
-  //       };
-
-  //       const emit = (eventName, data) => {
-  //         listeners[eventName]?.forEach(listener => listener(data));
-  //       };
-
-  //       window.ethereum = {
-  //         isMetaMask: true,
-  //         _metamask: {
-  //           is        : true,
-  //           get      : () => window.ethereum,
-  //           set      : () => {}
-  //         },
-  //         _events: listeners, // Expose internal event listeners for debugging
-  //         selectedAddress: _selectedAddress,
-  //         chainId: _chainId,
-  //         isConnected: () => _isConnected,
-
-  //         // Standard EIP-1193 request method
-  //         request: ({ method, params }) => {
-  //           return new Promise((resolve, reject) => {
-  //             const id = Math.random().toString(36).substring(7);
-  //             const message = { id, method, params };
-  //             console.log('WebView: Sending request to native:', message);
-
-  //             const listener = (event) => {
-  //               try {
-  //                 const nativeMessage = JSON.parse(event.data);
-  //                 if (nativeMessage.id === id) {
-  //                   window.removeEventListener("message", listener);
-  //                   console.log('WebView: Received response from native:', nativeMessage);
-  //                   if (nativeMessage.error) {
-  //                     reject(new Error(nativeMessage.error.message || 'Error from native'));
-  //                   } else {
-  //                     resolve(nativeMessage.result);
-  //                   }
-  //                 }
-  //               } catch (e) {
-  //                 console.error('WebView: Error parsing native message:', e);
-  //               }
-  //             };
-  //             window.addEventListener("message", listener);
-  //             window.ReactNativeWebView.postMessage(JSON.stringify(message));
-  //           });
-  //         },
-
-  //         // EIP-1193 event methods
-  //         on: (eventName, handler) => {
-  //           if (listeners[eventName]) {
-  //             listeners[eventName].push(handler);
-  //           } else {
-  //             console.warn(\`Ethereum provider: Unsupported event "\${eventName}"\`);
-  //           }
-  //         },
-  //         removeListener: (eventName, handler) => {
-  //           if (listeners[eventName]) {
-  //             listeners[eventName] = listeners[eventName].filter(l => l !== handler);
-  //           }
-  //         },
-
-  //         // Deprecated methods for compatibility (Uniswap might still use them)
-  //         send: (method, params) => {
-  //           if (typeof method === 'string') { // new send method (EIP-1193 style)
-  //             return window.ethereum.request({ method, params });
-  //           } else { // old send method (e.g., web3.js 0.x)
-  //             const payload = method;
-  //             return new Promise((resolve, reject) => {
-  //               window.ethereum.request({ method: payload.method, params: payload.params })
-  //                 .then(result => resolve({ jsonrpc: "2.0", id: payload.id, result }))
-  //                 .catch(error => reject({ jsonrpc: "2.0", id: payload.id, error }));
-  //             });
-  //           }
-  //         },
-  //         sendAsync: (payload, callback) => {
-  //           window.ethereum.request({ method: payload.method, params: payload.params })
-  //             .then(result => callback(null, { jsonrpc: "2.0", id: payload.id, result }))
-  //             .catch(error => callback(error, null));
-  //         }
-  //       };
-
-  //       // Dispatch events that DApps listen for
-  //       // This is crucial for DApps to detect the provider and trigger connection flows
-  //       window.dispatchEvent(new Event('ethereum#initialized'));
-  //       emit('connect', { chainId: _chainId }); // Inform DApp about connection
-  //       console.log('WebView: injected ethereum provider with address:', _selectedAddress, 'chainId:', _chainId);
-  //     })();
-  //     true;
-  //   `;
-  // }, []);
-
-  // --- Handle Messages from WebView (DApp requests) ---
-  const handleMessage = async (event: WebViewMessageEvent) => {
     try {
-      const { id, method, params } = JSON.parse(event.nativeEvent.data);
-      let result: any;
-      let error: { code?: number; message: string } | null = null;
+      const parsedData = JSON.parse(event.nativeEvent.data);
+      id = parsedData.id; // Extract the request ID
+      const { method, params } = parsedData; // Extract the RPC method and its parameters
 
-      if (!client || !account) {
-        error = { code: -32000, message: "Wallet not initialized." };
+      console.log('Native: Received DApp request from WebView:', { id, method, params });
+
+      // Ensure the wallet is fully initialized and connected before proceeding.
+      if (!client || !account || !currentAddress || currentChainId === undefined) {
+        console.log("Client non issue connecting")
+        error = { code: -32000, message: "Wallet not fully initialized or connected. Please ensure your wallet state is ready." };
+        
       } else {
-        switch (method) {
-          case 'eth_requestAccounts':
-          case 'eth_accounts':
-            result = [account.publicAddress];
-            break;
+        // Derive the `viem` Account object from the mnemonic for signing operations.
+        // This is crucial because `viem`'s `sendTransaction` and `signMessage` require an `Account` object.
+        const connectedViemAccount = accountfromMnemonic(account.mnemonic as string) as Account;
+        if (!connectedViemAccount) {
+          console.log("No Accout non issue connecting")
+          error = { code: -32000, message: "Failed to derive account from mnemonic. Please check wallet data." };
+          
+        } else {
+          // --- Process DApp's EIP-1193 RPC Requests ---
+          console.log("Start processsing")
+            switch (method) {
+                case 'eth_requestAccounts':
+                case 'eth_accounts':
+                    // These methods request access to user accounts.
+                    // A user confirmation modal should be displayed.
+                    await new Promise(resolve => {
+                        Alert.alert(
+                            "Connect Wallet",
+                            `A DApp wants to connect to your account:\n${currentAddress}\n\nDo you allow this connection?`,
+                            [
+                                {
+                                    text: "Deny",
+                                    onPress: () => {
+                                        error = { code: 4001, message: 'User rejected the request.' }; // EIP-1193 standard: User Rejected Request
+                                        resolve(null);
+                                    },
+                                    style: "cancel"
+                                },
+                                {
+                                    text: "Allow",
+                                    onPress: () => {
+                                        result = [currentAddress]; // Return the current address as the connected account.
+                                        resolve(null);
+                                    }
+                                }
+                            ],
+                            { cancelable: false }
+                        );
+                    });
+                    break;
 
-          case 'eth_chainId':
-            result = `0x${client?.chain?.id.toString(16)}`;
-            break;
+                case 'eth_chainId':
+                    // Return the current blockchain ID in hex string format as DApps expect.
+                    result = `0x${currentChainId.toString(16)}`;
+                    break;
 
-          case 'net_version': // Some DApps might still use this
-            result = client?.chain?.id.toString();
-            break;
+                case 'net_version':
+                    // Return the current network ID in decimal string format (legacy method).
+                    result = currentChainId.toString();
+                    break;
 
-          case 'personal_sign':
-          case 'eth_sign': {
-            const message = params[0]; // Message is typically the first param
-            // Note: `eth_sign` takes an address as the second param, `personal_sign` doesn't
-            // For simplicity, we assume `message` is the first parameter.
-            try {
-              result = await client.signMessage({
-                account: accountfromMnemonic(account.mnemonic  as string) as Account,
-                message: { raw: message }, // `viem` expects {raw: string | Uint8Array} or {text: string}
-              });
-            } catch (e: any) {
-              console.error('Signing error:', e);
-              error = { code: 4001, message: e.message || 'User rejected signature.' }; // User rejected
+                case 'personal_sign':
+                case 'eth_sign': {
+                    // Methods for signing messages. `personal_sign` is widely used.
+                    const messageParam = params[0]; // The message content (often a string or hex string)
+                    const addressParam = params[1]; // The address requesting the signature (optional for `personal_sign`, but often present)
+
+                    // Ensure the signing request is for the currently connected account.
+                    if (addressParam && addressParam.toLowerCase() !== currentAddress.toLowerCase()) {
+                        error = { code: -32000, message: `Cannot sign for address ${addressParam}. Connected account is ${currentAddress}.` };
+                        break;
+                    }
+
+                    // Display a user confirmation modal for signing the message.
+                    await new Promise(resolve => {
+                        Alert.alert(
+                            "Sign Message",
+                            `\nMethod: ${method}\nAccount: ${addressParam || currentAddress}\nMessage: ${messageParam.substring(0, 150)}${messageParam.length > 150 ? '...' : ''}\n\nDo you approve this signature?`,
+                            [
+                                {
+                                    text: "Cancel",
+                                    onPress: () => {
+                                        error = { code: 4001, message: 'User rejected signature.' }; // User rejected the signature request.
+                                        resolve(null);
+                                    },
+                                    style: "cancel"
+                                },
+                                {
+                                    text: "Sign",
+                                    onPress: async () => {
+                                        try {
+                                            // Use viem's `signMessage` to sign the message with the connected account.
+                                            const signature = await walletClient?.signMessage({
+                                                account: connectedViemAccount,
+                                                message: { raw: messageParam }, // viem expects {raw: string | Uint8Array} or {text: string}
+                                            });
+                                            result = signature;
+                                        } catch (e: any) {
+                                            console.error('Native: viem signMessage error:', e);
+                                            error = { code: -32002, message: e.message || 'Signature failed.' }; // Signature processing error.
+                                        }
+                                        resolve(null);
+                                    }
+                                }
+                            ],
+                            { cancelable: false }
+                        );
+                    });
+                    break;
+                }
+
+                case 'eth_signTypedData_v4': {
+                    // Method for signing EIP-712 typed data (structured data).
+                    const addressParam = params[0];
+                    const jsonMessage = params[1]; // The EIP-712 data as a JSON string
+
+                    // Ensure signing for the correct account.
+                    if (addressParam.toLowerCase() !== currentAddress.toLowerCase()) {
+                        error = { code: -32000, message: `Cannot sign for address ${addressParam}. Connected account is ${currentAddress}.` };
+                        break;
+                    }
+
+                    try {
+                        const parsedData = JSON.parse(jsonMessage);
+                        const { domain, types, message } = parsedData; // Destructure EIP-712 components
+
+                        // Display a user confirmation modal for signing typed data.
+                        await new Promise(resolve => {
+                            Alert.alert(
+                                "Sign Typed Data (EIP-712)",
+                                `\nAccount: ${addressParam}\nDomain: ${JSON.stringify(domain)}\nTypes: ${JSON.stringify(types)}\nMessage: ${JSON.stringify(message).substring(0, 150)}...\n\nDo you approve this signature?`,
+                                [
+                                    {
+                                        text: "Cancel",
+                                        onPress: () => {
+                                            error = { code: 4001, message: 'User rejected signature.' };
+                                            resolve(null);
+                                        },
+                                        style: "cancel"
+                                    },
+                                    {
+                                        text: "Sign",
+                                        onPress: async () => {
+                                            try {
+                                                // Use viem's internal `_signTypedData` for now.
+                                                // NOTE: `_signTypedData` is an internal method and might change in future viem versions.
+                                                // For robust production, consider using public viem hashing functions to hash the data
+                                                // and then sign the hash with `signMessage`.
+                                                // @ts-ignore - _signTypedData is not publicly typed.
+                                                const signature = await client._signTypedData({
+                                                    account: connectedViemAccount,
+                                                    domain,
+                                                    types,
+                                                    message
+                                                });
+                                                result = signature;
+                                            } catch (e: any) {
+                                                console.error('Native: viem signTypedData_v4 error:', e);
+                                                error = { code: -32002, message: e.message || 'Signing typed data failed.' };
+                                            }
+                                            resolve(null);
+                                        }
+                                    }
+                                ],
+                                { cancelable: false }
+                            );
+                        });
+                    } catch (e: any) {
+                        console.error('Native: Error parsing typed data or unexpected:', e);
+                        error = { code: -32602, message: `Invalid typed data: ${e.message}` }; // Invalid parameters error.
+                    }
+                    break;
+                }
+
+              case 'eth_sendTransaction': {
+                console.log("The Send")
+               
+                    // Method for sending blockchain transactions.
+                const tx = params; // The transaction object from the DApp.
+                Alert.alert(`Sending tx ${tx}`)
+                    // Convert hex string values (e.g., value, gas) to BigInt for viem, as it expects BigInts.
+                    const value = "1" //tx.value ? BigInt(tx.value) : undefined;
+                    const gas = "1" //tx.gas ? BigInt(tx.gas) : undefined;
+                    const gasPrice = "1"//tx.gasPrice ? BigInt(tx.gasPrice) : undefined;
+
+                    // Display a user confirmation modal for the transaction details.
+                    await new Promise(resolve => {
+                        Alert.alert(
+                            "Confirm Transaction",
+                            `\nTo: ${tx.to || 'Contract Deployment'}\nValue: ${value ? `${Number(value) / 10**18} ETH` : '0 ETH'}\nGas Limit: ${gas ? gas.toString() : 'Auto'}\nData: ${tx.data ? tx.data.substring(0, 100) + '...' : 'None'}\n\nDo you approve this transaction?`,
+                            [
+                                {
+                                    text: "Cancel",
+                                    onPress: () => {
+                                        error = { code: 4001, message: 'User rejected transaction.' }; // User rejected the transaction.
+                                        resolve(null);
+                                    },
+                                    style: "cancel"
+                                },
+                                {
+                                    text: "Approve",
+                                    onPress: async () => {
+                                        try {
+                                            // Use viem's `sendTransaction` to sign and send the transaction.
+                                            const hash = await walletClient?.sendTransaction({
+                                              account: connectedViemAccount, // The viem Account object for signing.
+                                              to: tx.to,
+                                              // value: value,
+                                              data: tx.data,
+                                              // gas: gas,
+                                              // gasPrice: gasPrice,
+                                              nonce: tx.nonce ? Number(tx.nonce) : undefined,
+                                              chain: undefined
+                                            });
+                                            result = hash; // Return the transaction hash on success.
+                                        } catch (e: any) {
+                                            console.error('Native: viem sendTransaction error:', e);
+                                            error = { code: -32003, message: e.message || 'Transaction failed.' }; // Transaction execution error.
+                                        }
+                                        resolve(null);
+                                    }
+                                }
+                            ],
+                            { cancelable: false }
+                        );
+                    });
+                    break;
+                }
+
+                case 'wallet_switchEthereumChain': {
+                    // DApp requests to switch the connected blockchain network.
+                    const chainIdParam = params[0].chainId; // e.g., "0x1" from DApp
+                    const targetChainId = parseInt(chainIdParam, 16); // Convert hex string to number.
+
+                    if (currentChainId === targetChainId) {
+                        result = null; // Already on the requested chain, resolve with null as per EIP-3326.
+                    } else {
+                        // Display a user confirmation modal for switching networks.
+                        await new Promise(resolve => {
+                            Alert.alert(
+                                "Switch Network",
+                                `A DApp wants to switch the network to Chain ID: ${targetChainId} (${chainIdParam}).\n\nDo you approve this?`,
+                                [
+                                    {
+                                        text: "Cancel",
+                                        onPress: () => {
+                                            error = { code: 4001, message: 'User rejected chain switch.' };
+                                            resolve(null);
+                                        },
+                                        style: "cancel"
+                                    },
+                                    {
+                                        text: "Switch",
+                                        onPress: async () => {
+                                            // TODO: Implement actual chain switching logic in your `useWallet` hook.
+                                            // This involves updating your viem client's chain configuration.
+                                            // Example: If your useWallet hook had a `switchChain` method:
+                                            // try {
+                                            //   await useWallet.switchChain(targetChainId);
+                                            //   result = null; // Resolve with null on success.
+                                            // } catch (e: any) {
+                                            //   error = { code: 4902, message: e.message || 'Failed to switch chain.' }; // Unrecognized Chain ID error.
+                                            // }
+                                            Alert.alert('Info', `Simulating chain switch to ${targetChainId}. Actual switch not yet implemented.`);
+                                            error = { code: 4902, message: 'Chain switching is not fully implemented in this wallet.' }; // Placeholder error.
+                                            resolve(null);
+                                        }
+                                    }
+                                ],
+                                { cancelable: false }
+                            );
+                        });
+                    }
+                    break;
+                }
+
+                case 'wallet_addEthereumChain': {
+                    // DApp requests to add a new custom blockchain network to the wallet.
+                    const newChain = params[0]; // Chain configuration object from DApp.
+                    console.log('Native: DApp requested to add chain:', newChain);
+
+                    // Display a user confirmation modal for adding a new network.
+                    await new Promise(resolve => {
+                        Alert.alert(
+                            "Add Network",
+                            `A DApp wants to add a new network:\n\nChain ID: ${newChain.chainId}\nName: ${newChain.chainName}\nRPC URL: ${newChain.rpcUrls[0]}\n\nDo you allow this?`,
+                            [
+                                {
+                                    text: "Cancel",
+                                    onPress: () => {
+                                        error = { code: 4001, message: 'User rejected adding chain.' };
+                                        resolve(null);
+                                    },
+                                    style: "cancel"
+                                },
+                                {
+                                    text: "Add",
+                                    onPress: async () => {
+                                        // TODO: Implement actual logic to add this chain to your wallet's supported configurations.
+                                        // This is a complex feature that involves storing custom RPC URLs, chain details,
+                                        // and potentially dynamically configuring viem clients for new chains.
+                                        Alert.alert('Info', 'Simulating add chain. Actual adding not yet implemented.');
+                                        error = { code: 4902, message: 'Adding custom chains is not fully supported in this wallet.' };
+                                        resolve(null);
+                                    }
+                                }
+                            ],
+                            { cancelable: false }
+                        );
+                    });
+                    break;
+                }
+
+                // --- Handle Common Read-Only Methods via viem PublicClient ---
+                // These methods typically fetch blockchain data without requiring user interaction.
+                case 'eth_call':
+                case 'eth_getBalance':
+                case 'eth_getCode':
+                case 'eth_getStorageAt':
+                case 'eth_getTransactionCount':
+                case 'eth_getBlockByNumber':
+                case 'eth_getTransactionByHash':
+                case 'eth_getTransactionReceipt':
+                case 'eth_estimateGas':
+                case 'eth_gasPrice':
+                    try {
+                        // Dynamically call the corresponding `viem` `PublicClient` method.
+                        // Ensure your `client` from `useWallet` is configured as a `PublicClient`
+                        // or has methods to handle these RPC calls.
+                        if (method === 'eth_getBalance') {
+                            result = await client.getBalance({ address: params[0] });
+                        } else if (method === 'eth_call') {
+                            result = await client.call(params[0]);
+                        } else if (method === 'eth_estimateGas') {
+                            result = await client.estimateGas(params[0]);
+                        } else if (method === 'eth_gasPrice') {
+                            result = await client.getGasPrice();
+                        } else if (method === 'eth_getCode') {
+                            result = await client.getBytecode({ address: params[0] });
+                        } else if (method === 'eth_getTransactionCount') {
+                            result = await client.getTransactionCount({ address: params[0] });
+                        } else if (method === 'eth_getBlockByNumber') {
+                            // `viem`'s `getBlock` takes a BigInt for `blockNumber` and a boolean for `includeTransactions`.
+                            result = await client.getBlock({ blockNumber: BigInt(params[0]), includeTransactions: params[1] || false });
+                        } else if (method === 'eth_getTransactionByHash') {
+                            result = await client.getTransaction({ hash: params[0] });
+                        } else if (method === 'eth_getTransactionReceipt') {
+                            result = await client.getTransactionReceipt({ hash: params[0] });
+                        } else {
+                            // Fallback for other standard RPC methods not explicitly mapped to `viem` functions.
+                            // This uses `client.request` which directly sends the RPC method.
+                            // Ensure your `viem` `Client` instance is capable of direct JSON-RPC requests.
+                            console.warn(`Native: Attempting to send RPC method "${method}" directly via client.request. This might require explicit mapping in your viem client configuration.`);
+                            result = await (client as any).request({ method, params });
+                        }
+                    } catch (e: any) {
+                        console.error(`Native: Error processing read-only method ${method}:`, e);
+                        error = { code: -32003, message: e.message || 'RPC call failed.' }; // RPC call failed error.
+                    }
+                    break;
+
+                default:
+                    // Log and return an error for any unhandled or unsupported RPC methods.
+                    console.warn('Native: Unhandled Ethereum RPC method:', method, params);
+                    error = { code: -32601, message: `Method not supported by wallet: ${method}` }; // Method not found error.
+                    break;
             }
-            break;
-          }
-
-          case 'eth_sendTransaction': {
-            const tx = params[0];
-            try {
-              // Ensure BigInt conversion for value and gas
-              const hash = await client.sendTransaction({
-                account: accountfromMnemonic(account.mnemonic as string) as Account,
-                to: tx.to,
-                value: tx.value ? BigInt(tx.value) : undefined,
-                gas: tx.gas ? BigInt(tx.gas) : undefined,
-                data: tx.data,
-                chain: undefined
-              });
-              result = hash;
-            } catch (e: any) {
-              console.error('Transaction error:', e);
-              error = { code: 4001, message: e.message || 'User rejected transaction.' }; // User rejected
-            }
-            break;
-          }
-
-          case 'wallet_switchEthereumChain': {
-            const chainIdParam = params[0].chainId; // e.g., "0x1"
-            const targetChainId = parseInt(chainIdParam, 16);
-            if (client?.chain?.id !== targetChainId) {
-              try {
-                // You would implement actual chain switching logic here.
-                // This might involve updating your `useWallet` hook's state
-                // and potentially recreating the viem client with the new chain.
-                // For now, we'll just simulate it.
-                // If you have `switchChain` in useWallet, call it:
-                // await switchChain(targetChainId);
-
-                // For a simple demo, if you don't actually switch, you might
-                // return an error or silently succeed if the chain is "acceptable".
-                console.warn(`Wallet: DApp requested to switch to chain ${targetChainId}. Current chain: ${client?.chain?.id}`);
-                // If you don't support switching or don't want to switch, you could return an error:
-                // error = { code: 4902, message: 'Unrecognized chain ID. Please add/switch chain manually.' };
-                result = null; // As per EIP-3326, `wallet_switchEthereumChain` resolves with null on success.
-              } catch (e: any) {
-                console.error('Chain switch error:', e);
-                error = { code: 4902, message: e.message || 'Failed to switch chain.' };
-              }
-            } else {
-              result = null; // Already on the requested chain
-            }
-            break;
-          }
-
-          case 'wallet_addEthereumChain': {
-            // You would implement logic to add a new chain to your wallet's supported chains.
-            // This is more complex and involves managing a list of chains your wallet supports.
-            // For now, we'll log and return an error or success based on your app's policy.
-            console.log('DApp requested to add chain:', params[0]);
-            error = { code: 4902, message: 'Adding custom chains not supported yet.' };
-            break;
-          }
-
-          default:
-            console.log('Unhandled Ethereum RPC method:', method, params);
-            error = { code: -32601, message: `Method not supported: ${method}` }; // Method not found
-            break;
         }
       }
-
-      // Send response back to WebView
-      const responseScript = `
-        (function() {
-          const messageEvent = new MessageEvent("message", {
-            data: ${JSON.stringify(JSON.stringify({ id, result, error }))},
-            origin: window.location.origin
-          });
-          window.dispatchEvent(messageEvent);
-        })();
-      `;
-      webviewRef.current?.injectJavaScript(responseScript);
-
     } catch (e: any) {
-      console.error('WebView handleMessage parsing/processing error:', e);
-      // Attempt to send an error response back if parsing failed
-      const errorResponseScript = `
-        (function() {
-          const id = ${event.nativeEvent.data ? JSON.parse(event.nativeEvent.data).id : null};
-          const error = { code: -32700, message: 'Parse error or internal handler error: ${e.message}' };
-          const messageEvent = new MessageEvent("message", {
-            data: ${JSON.stringify(JSON.stringify({  Error }))},
-            origin: window.location.origin
-          });
-          window.dispatchEvent(messageEvent);
-        })();
-      `;
-      webviewRef.current?.injectJavaScript(errorResponseScript);
+      // Catch any parsing errors or unexpected errors within this native `handleMessage` function itself.
+      console.error('Native: WebView handleMessage parsing/processing error:', e);
+      error = { code: -32700, message: `Parse error or internal handler error: ${e.message}` }; // Parse error.
+    } finally {
+        // --- Crucial: Always Send a Response Back to the WebView ---
+        // This ensures the DApp's Promise (from `ethereum.request`) is always resolved or rejected,
+        // preventing DApp requests from hanging indefinitely.
+        // It uses the `window.rnWebviewEthereumBridge.handleResponse` method exposed by the injected JavaScript.
+        if (webviewRef.current && id) {
+            const responseScript = `
+              if (window.rnWebviewEthereumBridge && typeof window.rnWebviewEthereumBridge.handleResponse === 'function') {
+                window.rnWebviewEthereumBridge.handleResponse(${JSON.stringify(id)}, ${JSON.stringify(error)}, ${JSON.stringify(result)});
+              } else {
+                console.error('WebView bridge not found or not ready to handle response for ID:', ${JSON.stringify(id)});
+              }
+              true; // injectJavaScript always needs to return true.
+            `;
+            webviewRef.current.injectJavaScript(responseScript);
+        }
     }
-  };
+  }, [account, client, currentAddress, currentChainId]); // Dependencies for `useCallback`: This function re-creates if wallet state changes.
 
-  // --- Re-inject Ethereum provider if address or chain changes ---
+  /**
+   * `useEffect` hook to manage the injection and re-injection of the Ethereum provider.
+   * This ensures the provider is present when the component mounts and is updated
+   * whenever the wallet's address or connected chain ID changes.
+   */
   useEffect(() => {
-    if (webviewRef.current && currentAddress && currentChainId) {
-      console.log("Re-injecting Ethereum provider due to address/chain change...");
-      // Re-inject the script. This will overwrite the existing window.ethereum.
-      webviewRef.current.injectJavaScript(injectedJavaScriptProvider(currentAddress, currentChainId));
+    // Only proceed with injection if all necessary wallet data is available.
+    if (webviewRef.current && currentAddress && currentChainId !== undefined) {
+      const hexChainId = `0x${currentChainId.toString(16)}`; // Convert chain ID to hex string for injection.
+      console.log("Native: Initiating/Re-injecting Ethereum provider due to wallet state change:", { currentAddress, hexChainId });
 
-      // After re-injection, also dispatch events to inform the DApp
-      // This might be redundant if the DApp re-initializes on window.ethereum change,
-      // but it's good practice.
-      const scriptToDispatchEvents = `
+      // Step 1: Inject the main EIP-1193 provider script.
+      // This call executes the `injectedJavaScriptProvider` function (from walletInjector.ts),
+      // which returns the JavaScript string to be run inside the WebView.
+      const scriptToInject = injectedJavaScriptProvider(currentAddress, hexChainId);
+      webviewRef.current.injectJavaScript(scriptToInject);
+
+      // Step 2: After a short delay, dispatch crucial EIP-1193 events to the DApp.
+      // This is important because DApps might load their own scripts very quickly,
+      // and events are how they are notified of the provider's readiness and initial state.
+      const dispatchEventsScript = `
         (function() {
-          if (window.ethereum && window.ethereum.emit) {
-            window.ethereum.emit('accountsChanged', ["${currentAddress}"]);
-            window.ethereum.emit('chainChanged', "0x${currentChainId.toString(16)}");
+          // Check if the window.rnWebviewEthereumBridge is available.
+          if (window.rnWebviewEthereumBridge && typeof window.rnWebviewEthereumBridge.emitEvent === 'function') {
+            // Emit 'connect' event to signal that the wallet is connected and ready.
+            window.rnWebviewEthereumBridge.emitEvent('connect', { chainId: '${hexChainId}' });
+            // Explicitly update accounts and chain ID.
+            // These calls also trigger 'accountsChanged' and 'chainChanged' events if values have indeed changed.
+            window.rnWebviewEthereumBridge.updateAccounts(["${currentAddress}"]);
+            window.rnWebviewEthereumBridge.updateChainId('${hexChainId}');
+          } else {
+            console.error('Native: WebView bridge for event dispatch not found. Events might not be delivered.');
           }
         })();
+        true; // injectJavaScript requires a return value of true.
       `;
-      webviewRef.current.injectJavaScript(scriptToDispatchEvents);
+      // Use `setTimeout` to ensure the `window.rnWebviewEthereumBridge` object is fully initialized
+      // in the WebView's JavaScript context before attempting to call its methods.
+      setTimeout(() => {
+        webviewRef.current?.injectJavaScript(dispatchEventsScript);
+      }, 100); // A small delay (e.g., 100ms) often suffices; adjust if DApps consistently miss initial events.
     }
-  }, [currentAddress, currentChainId, injectedJavaScriptProvider]);
-
+  }, [currentAddress, currentChainId]); // Dependencies: This effect re-runs whenever the wallet address or chain ID changes.
 
   return (
     <View style={styles.container}>
-      {/* <WebView
-        ref={webviewRef}
-        source={{ uri: dappUrl }}
-        // Inject initially. It will be re-injected if address/chain changes.
-        injectedJavaScriptBeforeContentLoaded={injectedJavaScriptProvider(currentAddress, currentChainId)}
-        onMessage={handleMessage}
-        originWhitelist={['*']}
-        javaScriptEnabled
-        // If you encounter issues with DApps not reacting, consider these:
-        // allowingFileAccess={true}
-        // domStorageEnabled={true}
-        // For debugging in development:
-        // onNavigationStateChange={(navState) => console.log("Nav State:", navState.url)}
-        // onLoadEnd={() => console.log("WebView finished loading.")}
-      /> */}
+      {/* Loading overlay displayed while the WebView content is loading. */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Loading DApp...</Text>
+        </View>
+      )}
       <WebView
-  ref={webviewRef}
-  source={{ uri: dappUrl }}
-  injectedJavaScriptBeforeContentLoaded={injectedJavaScriptProvider(currentAddress, currentChainId)}
-  onMessage={handleMessage}
-  originWhitelist={['*']}
-  javaScriptEnabled
-  domStorageEnabled={true}
-  allowFileAccess={true}
-  allowUniversalAccessFromFileURLs={true}
-  allowFileAccessFromFileURLs={true}
-  scrollEnabled={true}
-  nestedScrollEnabled={true}
-  showsVerticalScrollIndicator={false}
-  overScrollMode="always"
-  renderToHardwareTextureAndroid={true}
-  androidLayerType="hardware"
-  bounces={false}
-/>
+        ref={webviewRef} // Assign ref to control the WebView programmatically.
+        source={{ uri: dappUrl }} // The URL of the DApp to load.
+        // `injectedJavaScriptBeforeContentLoaded` is crucial for injecting the provider
+        // before the DApp's own scripts try to detect `window.ethereum`.
+        // If wallet data isn't ready, inject a minimal script with a warning.
+        injectedJavaScriptBeforeContentLoaded={
+            (currentAddress && currentChainId !== undefined)
+            ? injectedJavaScriptProvider(currentAddress, `0x${currentChainId.toString(16)}`)
+            : `(function() { console.warn("Wallet not yet ready, Ethereum provider will be injected once data is available."); })(); true;`
+        }
+        onMessage={handleMessage} // Callback for messages sent from the WebView (DApp requests).
+        originWhitelist={['*']} // Allows loading content from any origin (be cautious in production for security).
+        javaScriptEnabled={true} // Essential to allow DApp JavaScript to run.
+        domStorageEnabled={true} // Enables localStorage and sessionStorage for the DApp.
+        allowFileAccess={true}
+        allowUniversalAccessFromFileURLs={true}
+        allowFileAccessFromFileURLs={true} // Specifically for Android to allow file access from URLs.
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={false}
+        overScrollMode="always" // Android specific: controls over-scrolling behavior.
+        renderToHardwareTextureAndroid={true} // Android specific: improves rendering performance.
+        androidLayerType="hardware" // Android specific: controls rendering layer type.
+        bounces={false} // iOS specific: disables the scroll bounce effect.
 
+        // WebView lifecycle event handlers for managing the loading indicator.
+        onLoadStart={() => {
+            setLoading(true); // Show loading indicator when loading starts.
+            console.log('Native: WebView load started for:', dappUrl);
+        }}
+        onLoadEnd={() => {
+            setLoading(false); // Hide loading indicator when loading finishes.
+            console.log('Native: WebView load finished.');
+        }}
+        onLoad={() => console.log('Native: WebView initial page load completed.')}
+        onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('Native: WebView error during load:', nativeEvent.description);
+            Alert.alert('WebView Error', `Failed to load DApp: ${nativeEvent.description}`);
+        }}
+        // `setSupportMultipleWindows={false}` is crucial to prevent DApps from attempting
+        // to open new browser tabs/windows, which isn't supported directly in WebView.
+        setSupportMultipleWindows={false}
+      />
     </View>
   );
 };
 
-export default DiscoverScreen;
-
+// Stylesheet for the React Native components.
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 1, // Ensures the WebView takes up available space.
   },
+  loadingOverlay: {
+    position: 'absolute', // Position over the WebView.
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)', // Semi-transparent white background.
+    zIndex: 100, // Ensure it's rendered above the WebView content.
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#333',
+    fontSize: 16,
+  }
 });
+
+export default DiscoverScreen;

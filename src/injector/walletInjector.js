@@ -56,29 +56,48 @@
 // export default walletInjector;
 
 
+// eip1193/walletInjector.js
+
 const injectedJavaScriptProvider = (walletAddress, chainId) => `
 (function () {
   const accounts = ["${walletAddress}"];
   const pendingRequests = {};
+  const listeners = {
+    accountsChanged: [],
+    chainChanged: [],
+    connect: [],
+    disconnect: [],
+    message: [],
+  };
 
-  // Generate a unique ID for each request
   function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
   }
 
-  // Handle responses from React Native
+  function emit(event, data) {
+    if (listeners[event]) {
+      listeners[event].forEach(fn => fn(data));
+    }
+  }
+
+  // Listen for messages from React Native
   window.addEventListener('message', (event) => {
     try {
       const data = JSON.parse(event.data);
-      const { id, result, error } = data;
+      const { id, result, error, eventName, eventData } = data;
 
-      if (pendingRequests[id]) {
+      if (id && pendingRequests[id]) {
         if (error) {
           pendingRequests[id].reject(error);
         } else {
           pendingRequests[id].resolve(result);
         }
         delete pendingRequests[id];
+      }
+
+      // Emit events sent from native
+      if (eventName && listeners[eventName]) {
+        emit(eventName, eventData);
       }
     } catch (err) {
       console.error('Error parsing message from React Native:', err);
@@ -106,9 +125,8 @@ const injectedJavaScriptProvider = (walletAddress, chainId) => `
         case 'eth_sign':
         case 'eth_signTypedData_v4': {
           const id = generateId();
+          let payload;
 
-          // Normalize payload shape
-          let payload = {};
           if (method === 'personal_sign') {
             payload = { message: params[0], from: params[1] };
           } else if (method === 'eth_sign') {
@@ -119,7 +137,6 @@ const injectedJavaScriptProvider = (walletAddress, chainId) => `
             payload = params[0];
           }
 
-          // Send to RN
           window.ReactNativeWebView.postMessage(JSON.stringify({
             id,
             method,
@@ -137,15 +154,37 @@ const injectedJavaScriptProvider = (walletAddress, chainId) => `
     },
 
     on: (event, callback) => {
-      console.log('EIP1193: on event registered:', event);
+      if (listeners[event]) {
+        listeners[event].push(callback);
+      }
     },
 
     removeListener: (event, callback) => {
-      console.log('EIP1193: removeListener called:', event);
+      if (listeners[event]) {
+        listeners[event] = listeners[event].filter(fn => fn !== callback);
+      }
+    },
+
+    emit: (event, data) => emit(event, data),
+
+    // Legacy support
+    send: (methodOrPayload, paramsOrCallback) => {
+      if (typeof methodOrPayload === 'string') {
+        return provider.request({ method: methodOrPayload, params: paramsOrCallback });
+      }
+
+      const payload = methodOrPayload;
+      const callback = paramsOrCallback;
+      provider.request({ method: payload.method, params: payload.params })
+        .then(result => callback(null, { jsonrpc: '2.0', id: payload.id, result }))
+        .catch(error => callback(error, null));
+    },
+
+    sendAsync: function () {
+      return this.send.apply(this, arguments);
     }
   };
 
-  // Inject the provider
   window.ethereum = provider;
   window.dispatchEvent(new Event('ethereum#initialized'));
 })();
