@@ -16,7 +16,7 @@ import { WebViewMessageEvent } from 'react-native-webview';
 // Import your custom wallet hooks and utilities.
 // Adjust these paths based on your project structure.
 import { useWallet } from '../../hook/useWallet'; // Provides viem client and account
-import { Account } from 'viem'; // viem Account type
+import { Account, WalletClient } from 'viem'; // viem Account type
 import { accountfromMnemonic } from '../../utills/web3'; // Utility to derive viem Account from mnemonic
 
 // Import the EIP-1193 injected JavaScript provider.
@@ -26,19 +26,37 @@ import { useAccount } from '../../hook/useAccount';
 import { DiscoverRouteProp } from '../../types';
 import { mnemonicToAccount } from 'viem/accounts';
 import { useWalletClient } from '../../hook/useWalletClient';
+import { ConfirmationTokenProps, ConfirmationTokenSend } from '../../components/ConfirmationTokensend';
 
 
 const DiscoverScreen = () => {
-  const webviewRef = useRef<WebViewType>(null); // Reference to the WebView component instance
-  const route = useRoute<DiscoverRouteProp>(); // Hook to access navigation route parameters
-
-  // Access wallet state (account details and viem client) from your custom hook.
+  //const {openConfirmation,setOpenConfirmation} = React.useState<boolean>(false)
   const { account:acct, publicClient: client } = useWallet();
   const {account} = useAccount()
   const [loading, setLoading] = useState(true); // State to control the loading indicator for the WebView
   const mnemonic = account.mnemonic as string
     const acc = mnemonicToAccount(mnemonic)
     const walletClient = useWalletClient(acc);
+  const [sendprops, setSendProps] = React.useState<ConfirmationTokenProps>({
+    // confirm?: () => {},
+    // cancel: () => {},
+    token: {
+      to: '0x0000000000000000000000000000000000000000',
+      data: '0x',
+    },
+    open: false,
+    walletclient: {
+      client: walletClient as WalletClient, // must be a WalletClient instance
+      account: '0x0000000000000000000000000000000000000000',
+    },
+  });
+  const webviewRef = useRef<WebViewType>(null); // Reference to the WebView component instance
+  const route = useRoute<DiscoverRouteProp>(); // Hook to access navigation route parameters
+
+
+
+  // Access wallet state (account details and viem client) from your custom hook.
+  
 
   // Derive the current wallet address and chain ID.
   // These values are dynamic and used to inject/re-inject the provider.
@@ -235,6 +253,7 @@ const DiscoverScreen = () => {
                 }
 
               case 'eth_sendTransaction': {
+               // setOpenConfirmation(true)
                 console.log("The Send")
                
                     // Method for sending blockchain transactions.
@@ -243,49 +262,65 @@ const DiscoverScreen = () => {
                     // Convert hex string values (e.g., value, gas) to BigInt for viem, as it expects BigInts.
                     const value = "1" //tx.value ? BigInt(tx.value) : undefined;
                     const gas = "1" //tx.gas ? BigInt(tx.gas) : undefined;
-                    const gasPrice = "1"//tx.gasPrice ? BigInt(tx.gasPrice) : undefined;
+                const gasPrice = "1"//tx.gasPrice ? BigInt(tx.gasPrice) : undefined;
+                setSendProps({
+                  // confirm: handleConfirmSignature,
+                  // cancel: handleCancelSignature,
+                  token: {
+                    
+                    to: tx.to,
+                    data: tx.data,
+                    nonce: tx.nonce ? Number(tx.nonce) : undefined,
+                  },
+                  open: true,
+                  walletclient: {
+                    client: walletClient as WalletClient,
+                    account: connectedViemAccount 
+                  },
+                });
 
                     // Display a user confirmation modal for the transaction details.
-                    await new Promise(resolve => {
-                        Alert.alert(
-                            "Confirm Transaction",
-                            `\nTo: ${tx.to || 'Contract Deployment'}\nValue: ${value ? `${Number(value) / 10**18} ETH` : '0 ETH'}\nGas Limit: ${gas ? gas.toString() : 'Auto'}\nData: ${tx.data ? tx.data.substring(0, 100) + '...' : 'None'}\n\nDo you approve this transaction?`,
-                            [
-                                {
-                                    text: "Cancel",
-                                    onPress: () => {
-                                        error = { code: 4001, message: 'User rejected transaction.' }; // User rejected the transaction.
-                                        resolve(null);
-                                    },
-                                    style: "cancel"
-                                },
-                                {
-                                    text: "Approve",
-                                    onPress: async () => {
-                                        try {
-                                            // Use viem's `sendTransaction` to sign and send the transaction.
-                                            const hash = await walletClient?.sendTransaction({
-                                              account: connectedViemAccount, // The viem Account object for signing.
-                                              to: tx.to,
-                                              // value: value,
-                                              data: tx.data,
-                                              // gas: gas,
-                                              // gasPrice: gasPrice,
-                                              nonce: tx.nonce ? Number(tx.nonce) : undefined,
-                                              chain: undefined
-                                            });
-                                            result = hash; // Return the transaction hash on success.
-                                        } catch (e: any) {
-                                            console.error('Native: viem sendTransaction error:', e);
-                                            error = { code: -32003, message: e.message || 'Transaction failed.' }; // Transaction execution error.
-                                        }
-                                        resolve(null);
-                                    }
-                                }
-                            ],
-                            { cancelable: false }
-                        );
-                    });
+                    // await new Promise(resolve => {
+                    //     Alert.alert(
+                    //         "Confirm Transaction",
+                    //         `\nTo: ${tx.to || 'Contract Deployment'}\nValue: ${value ? `${Number(value) / 10**18} ETH` : '0 ETH'}\nGas Limit: ${gas ? gas.toString() : 'Auto'}\nData: ${tx.data ? tx.data.substring(0, 100) + '...' : 'None'}\n\nDo you approve this transaction?`,
+                    //         [
+                    //             {
+                    //                 text: "Cancel",
+                    //                 onPress: () => {
+                    //                     error = { code: 4001, message: 'User rejected transaction.' }; // User rejected the transaction.
+                    //                     resolve(null);
+                    //                 },
+                    //                 style: "cancel"
+                    //             },
+                    //             {
+                    //                 text: "Approve",
+                    //                 onPress: async () => {
+                    //                     try {
+                    //                         // Use viem's `sendTransaction` to sign and send the transaction.
+                    //                         const hash = await walletClient?.sendTransaction({
+                    //                           account: connectedViemAccount, // The viem Account object for signing.
+                    //                           to: tx.to,
+                    //                           // value: value,
+                    //                           data: tx.data,
+                    //                           // gas: gas,
+                    //                           // gasPrice: gasPrice,
+                    //                           nonce: tx.nonce ? Number(tx.nonce) : undefined,
+                    //                           chain: undefined
+                    //                         });
+                    //                         result = hash; // Return the transaction hash on success.
+                    //                     } catch (e: any) {
+                    //                         console.error('Native: viem sendTransaction error:', e);
+                    //                         error = { code: -32003, message: e.message || 'Transaction failed.' }; // Transaction execution error.
+                    //                     }
+                    //                     resolve(null);
+                    //                 }
+                    //             }
+                    //         ],
+                    //         { cancelable: false }
+                    //     );
+                // });
+                 
                     break;
                 }
 
@@ -550,6 +585,7 @@ const DiscoverScreen = () => {
         // to open new browser tabs/windows, which isn't supported directly in WebView.
         setSupportMultipleWindows={false}
       />
+     {sendprops && <ConfirmationTokenSend {...sendprops} />}
     </View>
   );
 };
